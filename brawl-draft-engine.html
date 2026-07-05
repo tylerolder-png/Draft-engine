@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Draft Engine — Brawl Stars Ranked</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#14192b; --panel:#1d2438; --panel-2:#242c45; --line:#323c5e;
+    --text:#e8ecf7; --dim:#9aa5c4;
+    --control:#4cc3ff; --aggro:#ff6a3d; --anti:#c3e94e; --gold:#ffcf4d;
+    --danger:#ff5d7a; --support:#c99bff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--ink);color:var(--text);font-family:"Inter",system-ui,sans-serif;font-size:15px;line-height:1.45;padding-bottom:80px}
+  .wrap{max-width:900px;margin:0 auto;padding:0 14px}
+  header{padding:22px 0 8px;
+    background:radial-gradient(600px 200px at 15% -50%, rgba(76,195,255,.16), transparent 70%),
+               radial-gradient(600px 200px at 85% -50%, rgba(255,106,61,.14), transparent 70%);}
+  h1{font-family:"Lilita One",sans-serif;font-size:clamp(26px,5.5vw,38px);text-transform:uppercase;letter-spacing:.5px;transform:skewX(-4deg);text-shadow:0 3px 0 rgba(0,0,0,.45)}
+  h1 .a{color:var(--gold)}
+  .sub{color:var(--dim);font-size:12.5px;margin-top:4px}
+
+  h2{font-family:"Lilita One",sans-serif;font-size:15px;text-transform:uppercase;letter-spacing:1px;color:var(--dim);margin:20px 0 8px;display:flex;align-items:center;gap:8px}
+  h2 .n{background:var(--gold);color:var(--ink);width:22px;height:22px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;transform:skewX(-6deg)}
+
+  .seg{display:flex;flex-wrap:wrap;gap:6px}
+  .seg button{
+    font-family:"Lilita One",sans-serif;font-size:13px;letter-spacing:.5px;text-transform:uppercase;
+    background:var(--panel);color:var(--dim);border:1px solid var(--line);border-radius:10px;
+    padding:8px 12px;cursor:pointer;
+  }
+  .seg button.on{background:var(--gold);color:var(--ink);border-color:var(--gold)}
+  .seg button:focus-visible{outline:2px solid var(--control)}
+
+  select{
+    width:100%;background:var(--panel);color:var(--text);border:1px solid var(--line);
+    border-radius:10px;padding:10px 12px;font-family:"Inter",sans-serif;font-size:14px;margin-top:6px;
+  }
+
+  /* category tabs for adding brawlers */
+  .cattabs{display:flex;gap:6px;margin-bottom:8px}
+  .cattabs button{
+    flex:1;font-family:"Lilita One",sans-serif;font-size:12px;letter-spacing:.5px;text-transform:uppercase;
+    padding:9px 4px;border-radius:10px;border:2px solid var(--line);background:var(--panel);color:var(--dim);cursor:pointer;
+  }
+  .cattabs button.on-ban{border-color:var(--danger);color:var(--danger);background:rgba(255,93,122,.08)}
+  .cattabs button.on-enemy{border-color:var(--aggro);color:var(--aggro);background:rgba(255,106,61,.08)}
+  .cattabs button.on-ally{border-color:var(--control);color:var(--control);background:rgba(76,195,255,.08)}
+
+  .selrows{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+  .selrow{display:flex;align-items:flex-start;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:7px 10px;min-height:38px}
+  .selrow .lab{font-family:"Lilita One",sans-serif;font-size:11px;letter-spacing:1px;text-transform:uppercase;padding-top:4px;width:58px;flex:none}
+  .selrow.ban .lab{color:var(--danger)} .selrow.enemy .lab{color:var(--aggro)} .selrow.ally .lab{color:var(--control)}
+  .selchips{display:flex;flex-wrap:wrap;gap:5px}
+  .selchip{
+    font-size:12.5px;font-weight:700;background:var(--panel-2);border:1px solid var(--line);
+    border-radius:999px;padding:3px 8px;cursor:pointer;color:var(--text);
+  }
+  .selchip::after{content:" ✕";color:var(--dim);font-size:10px}
+  .empty{color:var(--dim);font-size:12.5px;padding-top:5px;font-style:italic}
+
+  input[type=search]{
+    width:100%;background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    color:var(--text);padding:10px 12px;font-size:14px;font-family:"Inter",sans-serif;
+  }
+  .grid{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;max-height:200px;overflow-y:auto;padding:2px}
+  .bchip{
+    font-size:12.5px;font-weight:600;background:var(--panel);border:1px solid var(--line);
+    border-radius:999px;padding:5px 10px;cursor:pointer;color:var(--text);
+  }
+  .bchip:hover{border-color:var(--gold)}
+  .bchip.used{opacity:.28;pointer-events:none;text-decoration:line-through}
+  .bchip .cls{font-size:9px;font-weight:800;letter-spacing:.5px;margin-left:4px}
+  .cls.CT,.cls.SN,.cls.TH{color:var(--control)} .cls.AG{color:var(--aggro)} .cls.AT{color:var(--anti)} .cls.SP{color:var(--support)}
+
+  .statusbar{
+    margin-top:14px;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;
+    padding:10px 14px;font-size:13px;color:var(--dim);
+  }
+  .statusbar b{color:var(--gold)}
+
+  /* results */
+  .result{
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:10px 14px;margin-bottom:8px;
+  }
+  .result.top1{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}
+  .rhead{display:flex;align-items:center;gap:10px}
+  .rank{font-family:"Lilita One",sans-serif;font-size:15px;color:var(--dim);width:26px;flex:none}
+  .top1 .rank{color:var(--gold)}
+  .rname{font-family:"Lilita One",sans-serif;font-size:17px;letter-spacing:.4px;flex:none}
+  .rcls{font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;flex:none}
+  .bar{flex:1;height:8px;background:var(--panel-2);border-radius:99px;overflow:hidden;min-width:60px}
+  .bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--control),var(--gold))}
+  .score{font-family:"Lilita One",sans-serif;font-size:14px;color:var(--gold);width:34px;text-align:right;flex:none}
+  .why{margin-top:6px;display:flex;flex-wrap:wrap;gap:5px}
+  .why span{font-size:11.5px;background:var(--panel-2);border-radius:6px;padding:2px 7px;color:var(--dim)}
+  .why span.plus{color:var(--anti)} .why span.minus{color:var(--danger)}
+  .avoid-h{color:var(--danger)!important}
+  .result.avoid .bar i{background:var(--danger);opacity:.6}
+  .result.avoid .score{color:var(--danger)}
+
+  footer{margin-top:26px;padding-top:12px;border-top:1px solid var(--line);font-size:12px;color:var(--dim)}
+  .btnrow{display:flex;gap:8px;margin-top:10px}
+  .btnrow button{
+    font-family:"Lilita One",sans-serif;font-size:12px;letter-spacing:.5px;text-transform:uppercase;
+    background:var(--panel);color:var(--dim);border:1px solid var(--line);border-radius:10px;padding:8px 14px;cursor:pointer;
+  }
+  .btnrow button:hover{color:var(--text)}
+</style>
+</head>
+<body>
+
+<header><div class="wrap">
+  <h1>Draft <span class="a">Engine</span></h1>
+  <p class="sub">Plug in the draft state → get ranked viable picks. Scoring encodes bobby's system: mode priority → comp shape → counters → pick-slot risk.</p>
+</div></header>
+
+<div class="wrap">
+
+  <h2><span class="n">1</span> Mode</h2>
+  <div class="seg" id="modeSeg"></div>
+
+  <h2><span class="n">2</span> Map</h2>
+  <select id="mapSel"></select>
+  <div class="seg" id="terrainSeg" style="margin-top:8px"></div>
+
+  <h2><span class="n">3</span> Who picked first?</h2>
+  <div class="seg" id="orderSeg">
+    <button data-v="us" class="on">My team first</button>
+    <button data-v="them">Enemy first</button>
+  </div>
+
+  <h2><span class="n">4</span> Bans &amp; picks so far <span style="font-weight:400;text-transform:none;letter-spacing:0;font-family:Inter;font-size:12px">(tap a category, then tap brawlers)</span></h2>
+  <div class="cattabs">
+    <button id="tab-ban" class="on-ban">🚫 Bans</button>
+    <button id="tab-enemy">🔴 Enemy picks</button>
+    <button id="tab-ally">🔵 My team</button>
+  </div>
+  <div class="selrows">
+    <div class="selrow ban"><span class="lab">Bans</span><div class="selchips" id="sel-ban"><span class="empty">none yet</span></div></div>
+    <div class="selrow enemy"><span class="lab">Enemy</span><div class="selchips" id="sel-enemy"><span class="empty">none yet</span></div></div>
+    <div class="selrow ally"><span class="lab">Team</span><div class="selchips" id="sel-ally"><span class="empty">none yet — or you're first pick</span></div></div>
+  </div>
+  <input type="search" id="search" placeholder="Search brawlers… (tap to add to the highlighted category)">
+  <div class="grid" id="grid"></div>
+  <div class="btnrow"><button id="resetBtn">↺ Reset draft</button></div>
+
+  <div class="statusbar" id="status"></div>
+
+  <h2><span class="n">★</span> Your best picks</h2>
+  <div id="results"></div>
+
+  <h2 class="avoid-h"><span class="n" style="background:var(--danger)">!</span> Trap picks (look fine, aren't)</h2>
+  <div id="traps"></div>
+
+  <footer>
+    Engine logic from bobby's "The Best Draft Guide EVER." Full 106-brawler roster including the Ramen Rebellion additions — Nori is releasing now (July) and Wendy lands in August, so they'll show as pickable slightly before your client has them. After balance patches, edit the <b>DATA</b> array at the top of this file's script (each brawler's six numbers are Gem/Heist/Ball/Zone/KO/Bounty, 0–3). Brand-new brawlers can be added as one extra line.
+  </footer>
+</div>
+
+<script>
+/* ============================================================
+   DATA — [name, class, range, g,h,b,z,k,y, "flags"]
+   class: CT control · TH thrower · SN sniper · AG tank/aggro · AT anti-tank · SP support
+   range: s short · m mid · l long
+   flags: S safe/flex  X high-risk/punisher  C stun/knockback/cc  D big safe damage (heist)
+          P ball playmaker  G goal scorer  V zone space-creator  H zone holder
+          A anti-heal  R ranged anti-tank  L low damage
+   ============================================================ */
+const DATA=[
+["Shelly","AG","s",1,1,2,1,1,0,"GCX"],
+["Colt","CT","l",2,3,1,1,2,2,"D"],
+["Bull","AG","s",1,2,2,1,0,0,"GXD"],
+["Brock","CT","l",2,3,1,1,2,2,"D"],
+["El Primo","AG","s",1,1,2,2,0,0,"GX"],
+["Barley","TH","m",2,3,2,3,2,2,"DH"],
+["Poco","SP","m",2,0,2,3,1,0,"LH"],
+["Rosa","AG","s",1,1,1,2,0,0,"X"],
+["Jessie","CT","m",2,2,1,2,1,1,""],
+["Nita","AT","m",2,3,2,2,1,1,"DP"],
+["Dynamike","TH","m",2,3,2,2,2,2,"XDC"],
+["Tick","TH","m",2,1,1,2,3,2,"XL"],
+["8-Bit","CT","l",3,2,1,2,2,1,"S"],
+["Rico","CT","l",3,3,3,2,2,2,"SDP"],
+["Darryl","AG","s",2,3,3,2,1,0,"GDX"],
+["Penny","CT","m",2,2,1,2,2,2,""],
+["Carl","AG","m",3,2,3,3,2,1,"SPV"],
+["Jacky","AG","s",1,2,2,2,0,0,"X"],
+["Gus","CT","l",3,1,1,2,2,2,"SH"],
+["Bo","CT","l",2,1,1,2,2,2,"C"],
+["Emz","CT","m",2,1,2,3,1,1,"H"],
+["Stu","AG","m",3,2,2,3,2,1,"SVH"],
+["Piper","SN","l",2,2,0,1,3,3,"S"],
+["Pam","SP","m",2,1,1,2,1,1,"H"],
+["Frank","AG","s",1,1,2,2,1,0,"XC"],
+["Bibi","AG","s",1,1,2,1,0,0,"XC"],
+["Bea","AT","l",2,1,3,2,3,3,"R"],
+["Nani","SN","l",1,2,1,1,3,3,""],
+["Edgar","AG","s",1,1,2,1,0,0,"X"],
+["Griff","CT","m",2,3,2,2,1,1,"D"],
+["Grom","TH","l",1,1,1,2,3,2,""],
+["Bonnie","AG","m",1,1,2,1,1,1,""],
+["Gale","AT","m",2,1,3,2,2,1,"CP"],
+["Colette","AT","m",2,3,2,2,2,1,"D"],
+["Belle","SN","l",2,3,1,2,3,3,"S"],
+["Ash","AG","s",2,1,3,3,1,0,"PV"],
+["Lola","CT","l",2,3,1,2,2,2,"D"],
+["Sam","AG","s",1,1,2,2,1,0,"X"],
+["Mandy","SN","l",2,2,1,1,3,3,""],
+["Maisie","AT","m",2,1,3,2,2,2,"CP"],
+["Hank","AG","s",1,2,2,3,1,0,"VX"],
+["Pearl","AT","m",2,3,2,2,3,2,"RD"],
+["Larry & Lawrie","TH","m",2,1,1,2,3,2,""],
+["Angelo","SN","l",3,3,1,2,3,3,"S"],
+["Berry","TH","m",2,3,2,3,1,1,"HD"],
+["Clancy","AG","m",2,2,2,2,2,1,"X"],
+["Moe","AT","m",2,2,2,2,2,1,"C"],
+["Kenji","AG","s",3,2,3,3,2,1,"XVP"],
+["Shade","AG","s",2,1,3,2,2,1,"X"],
+["Juju","TH","m",3,2,2,2,3,2,"S"],
+["Meeple","CT","l",2,1,1,2,2,2,""],
+["Ollie","AG","s",2,1,3,3,1,1,"VCP"],
+["Lumi","AT","m",2,2,2,2,2,2,"C"],
+["Finx","SP","m",2,1,2,2,2,1,""],
+["Jae-yong","SP","m",2,1,2,3,1,1,"H"],
+["Kaze","AG","s",2,2,3,2,2,1,"X"],
+["Mortis","AG","s",2,1,3,3,1,0,"XVP"],
+["Tara","AT","m",2,3,3,2,2,2,"CPD"],
+["Gene","SP","l",3,1,1,2,3,3,"C"],
+["Max","SP","m",2,1,2,2,1,1,"L"],
+["Mr. P","CT","l",3,1,1,2,2,2,""],
+["Sprout","TH","l",2,1,1,1,3,2,"L"],
+["Byron","SP","l",2,1,1,3,2,3,"AH"],
+["Squeak","TH","m",2,1,2,2,2,2,""],
+["Lou","AT","m",2,1,3,3,2,2,"SC"],
+["Ruffs","SP","l",2,1,1,1,2,2,"L"],
+["Buzz","AG","s",1,1,3,2,1,0,"XCGP"],
+["Fang","AG","s",1,1,3,2,2,0,"XP"],
+["Eve","CT","l",2,3,1,1,2,2,"D"],
+["Janet","CT","l",3,1,2,3,2,2,"SH"],
+["Otis","CT","m",2,2,2,2,2,1,"C"],
+["Sandy","AT","m",2,1,3,3,2,1,"SPG"],
+["Amber","CT","l",2,3,2,3,2,2,"D"],
+["Meg","AG","m",1,2,1,2,2,1,""],
+["Surge","AT","m",2,1,3,2,2,1,"C"],
+["Chester","AG","m",2,2,2,2,2,1,"CX"],
+["Cordelius","AT","m",2,1,2,2,3,1,"C"],
+["Kit","SP","s",2,1,2,2,2,1,"X"],
+["Spike","CT","m",2,3,3,3,2,2,"CD"],
+["Crow","AT","m",2,3,2,2,2,2,"AD"],
+["Leon","AG","s",2,1,2,2,1,1,"X"],
+["Chuck","AG","s",0,3,1,2,0,0,"DX"],
+["Charlie","AT","l",2,3,2,2,2,1,"CD"],
+["Mico","AG","s",1,1,2,1,1,0,"X"],
+["Melodie","AG","m",2,3,3,3,1,1,"DVP"],
+["Draco","AG","s",2,1,3,3,1,0,"VP"],
+["Lily","AG","s",1,1,2,1,2,1,"X"],
+["Doug","SP","s",1,1,1,2,0,0,"LH"],
+["Willow","TH","m",2,1,2,2,2,2,"SC"],
+["R-T","AT","l",2,1,2,2,3,2,"R"],
+["Buster","AG","m",2,1,2,2,2,1,""],
+["Gray","SP","l",2,1,2,3,2,1,"V"],
+["Trunk","AG","m",2,1,2,3,1,1,"V"],
+["Alli","AG","s",2,1,3,2,1,0,"X"],
+["Mina","AT","m",2,2,2,2,2,1,"D"],
+["Ziggy","CT","m",2,1,2,2,2,2,""],
+["Gigi","AG","s",2,1,3,2,1,1,"X"],
+["Glowy","SP","m",2,1,1,2,1,1,"H"],
+["Pierce","SN","l",2,2,1,2,3,3,""],
+["Najia","AT","m",2,2,2,2,2,1,"D"],
+["Damian","AG","s",2,1,3,3,1,0,"XVP"],
+["Starr Nova","AG","s",2,2,3,2,2,1,"XP"],
+["Bolt","AG","m",2,2,3,3,1,0,"VP"],
+["Sirius","CT","m",3,1,2,2,2,2,"S"],
+["Nori","AG","s",2,1,3,2,2,1,"X"],
+["Wendy","SP","m",2,1,2,3,1,1,"HA"],
+];
+
+/* hard-counter map: candidate → enemies it hard-counters */
+const COUNTERS={
+"R-T":["Gray"],
+"Buster":["Gray","Piper","Mandy","Brock","Belle"],
+"Fang":["Gray"],
+"Amber":["Ash","Frank"],
+"Frank":["Stu","Penny","Lola","Ruffs","Max"],
+"Buzz":["Amber","Rico","Bo","Brock","Colt"],
+"Mortis":["Tick","Sprout","Dynamike","Barley","Piper"],
+"Kenji":["Piper","Mandy","Sprout","Tick","8-Bit"],
+"Gene":["Nani","Mandy","Piper","Tick"],
+"Nani":["Mandy","Belle"],
+"Mandy":["Piper","Belle"],
+"Piper":["Belle","Brock"],
+"Sandy":["Piper","Mandy","Belle","Nani"],
+"Lou":["Buzz","Kenji","Darryl","Kit","Fang","Mortis","Alli","Nori","Gigi","Kaze","Starr Nova","Damian"],
+"Surge":["Buzz","Edgar","Mortis","Kenji","Mico","Lily","Fang","Alli","Gigi","Nori","Starr Nova","Kaze"],
+"Cordelius":["Sprout","Kit","Mortis","Gray","Edgar","Mico","Alli","Gigi","Nori"],
+"Pearl":["Gray","Bull","Darryl","Frank","Draco","Bolt","Damian","Trunk"],
+"Bea":["Frank","El Primo","Bull","Draco","Hank","Ash","Bolt","Damian","Trunk"],
+"Crow":["Poco","Berry","Byron","Pam","Ash","Wendy","Glowy"],
+"Byron":["Poco","Berry","Pam","Doug","Wendy","Glowy"],
+};
+
+const MODES=[["gem","💎 Gem Grab"],["heist","💰 Heist"],["ball","⚽ Brawl Ball"],["zone","🔥 Hot Zone"],["ko","💀 Knockout"],["bounty","⭐ Bounty"]];
+const MODEKEY={gem:3,heist:4,ball:5,zone:6,ko:7,bounty:8};
+
+/* maps per mode with terrain: open / walls / bushy */
+const MAPS={
+gem:[["Hard Rock Mine","walls"],["Double Swoosh","bushy"],["Undermine","walls"],["Gem Fort","walls"],["Crystal Arcade","walls"],["Sneaky Sneak","bushy"]],
+heist:[["Kaboom Canyon","walls"],["Hot Potato","walls"],["Safe Zone","walls"],["Bridge Too Far","open"],["Pit Stop","walls"]],
+ball:[["Backyard Bowl","walls"],["Center Stage","open"],["Sneaky Fields","bushy"],["Pinball Dreams","walls"],["Triple Dribble","walls"],["Beach Ball","bushy"]],
+zone:[["Ring of Fire","walls"],["Dueling Beetles","walls"],["Open Business","open"],["Parallel Plays","walls"],["Split","open"]],
+ko:[["Belle's Rock","walls"],["Flaring Phoenix","open"],["Out in the Open","open"],["Goldarm Gulch","walls"],["New Perspective","open"],["Between the Rivers","walls"]],
+bounty:[["Layer Cake","walls"],["Shooting Star","open"],["Canal Grande","walls"],["Dry Season","open"],["Excel","open"],["Hideout","walls"]],
+};
+
+const TERRAIN={
+open:{SN:5,CT:2,TH:-5,AG:-5,AT:0,SP:0},
+walls:{SN:-1,CT:2,TH:5,AG:1,AT:0,SP:0},
+bushy:{SN:-4,CT:-1,TH:-1,AG:5,AT:3,SP:1},
+};
+
+const isControl=c=>["CT","TH","SN"].includes(c);
+
+/* ---------- state ---------- */
+let state={mode:"gem",map:MAPS.gem[0][0],terrain:MAPS.gem[0][1],order:"us",cat:"ban",ban:[],enemy:[],ally:[]};
+
+/* ---------- ui build ---------- */
+const $=id=>document.getElementById(id);
+function buildModeSeg(){
+  $("modeSeg").innerHTML=MODES.map(([k,l])=>`<button data-v="${k}" class="${state.mode===k?'on':''}">${l}</button>`).join("");
+  $("modeSeg").querySelectorAll("button").forEach(b=>b.onclick=()=>{state.mode=b.dataset.v;buildMapSel();render();buildModeSeg();});
+}
+function buildMapSel(){
+  const maps=MAPS[state.mode];
+  $("mapSel").innerHTML=maps.map(([m])=>`<option>${m}</option>`).join("")+`<option value="__custom">Other map…</option>`;
+  state.map=maps[0][0];state.terrain=maps[0][1];
+  buildTerrainSeg();
+}
+$("mapSel")&&null;
+function buildTerrainSeg(){
+  const opts=[["open","Open"],["walls","Walls"],["bushy","Bushy"]];
+  $("terrainSeg").innerHTML=`<span style="font-size:11px;color:var(--dim);align-self:center;margin-right:4px">TERRAIN:</span>`+
+    opts.map(([k,l])=>`<button data-v="${k}" class="${state.terrain===k?'on':''}">${l}</button>`).join("");
+  $("terrainSeg").querySelectorAll("button").forEach(b=>b.onclick=()=>{state.terrain=b.dataset.v;buildTerrainSeg();render();});
+}
+function buildOrderSeg(){
+  $("orderSeg").querySelectorAll("button").forEach(b=>{
+    b.onclick=()=>{state.order=b.dataset.v;$("orderSeg").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));render();};
+  });
+}
+function buildTabs(){
+  const tabs=[["ban","tab-ban","on-ban"],["enemy","tab-enemy","on-enemy"],["ally","tab-ally","on-ally"]];
+  tabs.forEach(([cat,id,cls])=>{
+    $(id).onclick=()=>{
+      state.cat=cat;
+      tabs.forEach(([c2,id2,cls2])=>$(id2).className=(c2===state.cat)?cls2:"");
+    };
+  });
+}
+function usedNames(){return [...state.ban,...state.enemy,...state.ally];}
+function buildGrid(){
+  const q=$("search").value.trim().toLowerCase();
+  const used=usedNames();
+  $("grid").innerHTML=DATA
+    .filter(d=>d[0].toLowerCase().includes(q))
+    .map(d=>`<button class="bchip ${used.includes(d[0])?'used':''}" data-n="${d[0]}">${d[0]}<span class="cls ${d[1]}">${d[1]}</span></button>`)
+    .join("");
+  $("grid").querySelectorAll(".bchip").forEach(b=>b.onclick=()=>{
+    const cap={ban:6,enemy:3,ally:2};
+    if(state[state.cat].length>=cap[state.cat]){return;}
+    state[state.cat].push(b.dataset.n);
+    $("search").value="";
+    render();
+  });
+}
+function buildSelRows(){
+  [["ban","sel-ban","none yet"],["enemy","sel-enemy","none yet"],["ally","sel-ally","none yet — or you're first pick"]].forEach(([cat,id,ph])=>{
+    const el=$(id);
+    el.innerHTML=state[cat].length?state[cat].map(n=>`<button class="selchip" data-n="${n}">${n}</button>`).join(""):`<span class="empty">${ph}</span>`;
+    el.querySelectorAll(".selchip").forEach(c=>c.onclick=()=>{
+      state[cat]=state[cat].filter(x=>x!==c.dataset.n);render();
+    });
+  });
+}
+$("search").addEventListener("input",buildGrid);
+$("mapSel").addEventListener("change",e=>{
+  const v=e.target.value;
+  if(v==="__custom"){state.map="Custom";}
+  else{state.map=v;const found=MAPS[state.mode].find(m=>m[0]===v);if(found)state.terrain=found[1];}
+  buildTerrainSeg();render();
+});
+$("resetBtn").onclick=()=>{state.ban=[];state.enemy=[];state.ally=[];render();};
+
+/* ---------- pick order math ---------- */
+/* sequence when my team is first: U E E U U E ; when enemy first: E U U E E U */
+function pickInfo(){
+  const seq=state.order==="us"?["U","E","E","U","U","E"]:["E","U","U","E","E","U"];
+  let mySlot=-1,u2=state.ally.length,e2=state.enemy.length;
+  for(let i=0;i<6;i++){
+    if(seq[i]==="U"){if(u2>0){u2--;continue;} mySlot=i;break;}
+    else{if(e2>0){e2--;continue;}}
+  }
+  if(mySlot<0)mySlot=5;
+  const enemyAfter=Math.max(0, seq.slice(mySlot+1).filter(s=>s==="E").length - Math.max(0,state.enemy.length-seq.slice(0,mySlot).filter(s=>s==="E").length));
+  return {mySlot:mySlot+1,enemyAfter};
+}
+
+/* ---------- scoring engine ---------- */
+function classCounts(names){
+  const cc={CT:0,AGGRO:0,AT:0,SP:0,SN:0,TH:0,control:0};
+  names.forEach(n=>{
+    const d=DATA.find(x=>x[0]===n);if(!d)return;
+    const c=d[1];
+    if(c==="AG")cc.AGGRO++;else cc[c]=(cc[c]||0)+1;
+    if(isControl(c))cc.control++;
+  });
+  return cc;
+}
+function hasFlag(names,f){return names.some(n=>{const d=DATA.find(x=>x[0]===n);return d&&d[9].includes(f);});}
+
+function scoreAll(){
+  const used=usedNames();
+  const ally=classCounts(state.ally), enemy=classCounts(state.enemy);
+  const pi=pickInfo();
+  const results=[];
+  for(const d of DATA){
+    const [name,cls,range,g,h,b,z,k,y,flags]=d;
+    if(used.includes(name))continue;
+    const tier=d[MODEKEY[state.mode]];
+    let score=tier*10;
+    const why=[];
+    if(tier===3)why.push(["+","core "+state.mode+" pick"]);
+    if(tier===0)why.push(["-","bad mode fit"]);
+
+    /* terrain */
+    const t=TERRAIN[state.terrain][cls]||0;
+    score+=t;
+    if(t>=3)why.push(["+","great on "+state.terrain+" map"]);
+    if(t<=-4)why.push(["-","struggles on "+state.terrain+" map"]);
+
+    /* mode comp-shape logic */
+    if(state.mode==="gem"){
+      if(isControl(cls)){
+        if(ally.control>=2){score-=14;why.push(["-","3rd control = one enemy aggro beats all of you"]);}
+        else if(ally.control===0){score+=4;why.push(["+","team needs control"]);}
+      }else if(ally.control>=2){score+=6;why.push(["+","spaces out a 2-control comp"]);}
+    }
+    if(state.mode==="heist"){
+      if(flags.includes("D")){score+=8;why.push(["+","melts the safe (damage > matchups here)"]);}
+      if(flags.includes("L")){score-=12;why.push(["-","no safe damage — Heist is damage-first"]);}
+      if(cls==="SN"&&!flags.includes("D")){score-=5;why.push(["-","KD-farming sniper, safe stays alive"]);}
+    }
+    if(state.mode==="ball"){
+      if(isControl(cls)){
+        if(ally.control>=1){score-=15;why.push(["-","2+ control in Brawl Ball ≈ 90% loss"]);}
+        else why.push(["+","ok as your ONE control — only if other 2 are strong"]);
+      }
+      if(flags.includes("P")){ if(!hasFlag(state.ally,"P")){score+=6;why.push(["+","team lacks a playmaker/hyper threat"]);} }
+      if(flags.includes("G")&&hasFlag(state.ally,"G")){score-=8;why.push(["-","2nd goal-scorer, max 1"]);}
+    }
+    if(state.mode==="zone"){
+      if(flags.includes("L")){score-=14;why.push(["-","low damage never works in Hot Zone"]);}
+      if(flags.includes("V")&&!hasFlag(state.ally,"V")){score+=6;why.push(["+","space creator — team needs one"]);}
+      if(flags.includes("H")&&!hasFlag(state.ally,"H")){score+=5;why.push(["+","zone holder — team needs one"]);}
+      if(flags.includes("A")&&(state.enemy.includes("Poco")||state.enemy.includes("Berry")||state.enemy.includes("Gray")||state.enemy.includes("Byron"))){score+=8;why.push(["+","anti-heal vs their heal cheese"]);}
+    }
+    if(state.mode==="ko"||state.mode==="bounty"){
+      if(flags.includes("R")&&!hasFlag(state.ally,"R")){score+=7;why.push(["+","the ranged anti-tank every KO/Bounty comp needs"]);}
+      if(flags.includes("C")&&!hasFlag(state.ally,"C")&&!hasFlag(state.ally,"R")){score+=4;why.push(["+","adds the stun/knockback your comp lacks"]);}
+      if(cls==="AG"&&range==="s"){score-=5;why.push(["-","short-range aggro in a passive mode (no respawns to cook up)"]);}
+      if(isControl(cls)&&ally.control>=2){score-=7;why.push(["-","all-squishy comp — one assassin deletes you"]);}
+    }
+
+    /* triangle counters vs shown enemy picks */
+    if(state.enemy.length){
+      if(cls==="AT"&&enemy.AGGRO>0){score+=4*enemy.AGGRO;why.push(["+","anti-tank vs their "+enemy.AGGRO+" aggro pick"+(enemy.AGGRO>1?"s":"")]);}
+      if(cls==="AG"&&enemy.control>=2){score+=5;why.push(["+","aggro punishes their control-heavy comp"]);}
+      if(isControl(cls)&&enemy.AT>0){score+=3;why.push(["+","outranges their anti-tank"]);}
+      if(isControl(cls)&&enemy.AGGRO>=2){score-=6;why.push(["-","their aggro picks will run you down"]);}
+      /* hard counters */
+      const hc=(COUNTERS[name]||[]).filter(e=>state.enemy.includes(e));
+      if(hc.length){score+=6*hc.length;why.push(["+","hard-counters "+hc.join(" & ")]);}
+      /* am I hard-countered by something they showed? */
+      const counteredBy=Object.entries(COUNTERS).filter(([c,list])=>state.enemy.includes(c)&&list.includes(name)).map(([c])=>c);
+      if(counteredBy.length){score-=7*counteredBy.length;why.push(["-","already countered by their "+counteredBy.join(" & ")]);}
+    }
+
+    /* pick-slot risk */
+    if(flags.includes("X")){
+      if(pi.enemyAfter>0){score-=6;why.push(["-","high-risk pick with "+pi.enemyAfter+" enemy pick"+(pi.enemyAfter>1?"s":"")+" still to come"]);}
+      else{score+=5;why.push(["+","greedy punisher — nothing can answer you now"]);}
+    }
+    if(flags.includes("S")&&pi.enemyAfter>=2){score+=3;why.push(["+","safe/flex — right call this early"]);}
+
+    results.push({name,cls,score,why});
+  }
+  results.sort((a,b)=>b.score-a.score);
+  return {results,pi};
+}
+
+/* ---------- render ---------- */
+function render(){
+  buildSelRows();buildGrid();
+  const {results,pi}=scoreAll();
+  const slotTxt=state.ally.length+state.enemy.length===0?"You're on <b>first pick</b> — go safe/flex, the whole draft answers you.":
+    `You're on <b>pick ${pi.mySlot} of 6</b> — ${pi.enemyAfter===0?"<b>nothing picks after you: go greedy, take the hardest counter</b>":`<b>${pi.enemyAfter} enemy pick${pi.enemyAfter>1?"s":""} still follow${pi.enemyAfter>1?"":"s"} — stay counter-proof</b>`}.`;
+  $("status").innerHTML=`${MODES.find(m=>m[0]===state.mode)[1]} · ${state.map} (${state.terrain}) — ${slotTxt}`;
+
+  const max=Math.max(...results.map(r=>r.score),1);
+  $("results").innerHTML=results.slice(0,10).map((r,i)=>`
+    <div class="result ${i===0?'top1':''}">
+      <div class="rhead">
+        <span class="rank">#${i+1}</span>
+        <span class="rname">${r.name}</span>
+        <span class="rcls cls ${r.cls}">${r.cls}</span>
+        <span class="bar"><i style="width:${Math.max(4,100*r.score/max)}%"></i></span>
+        <span class="score">${r.score}</span>
+      </div>
+      <div class="why">${r.why.slice(0,4).map(([s,t])=>`<span class="${s==='+'?'plus':'minus'}">${s==='+'?'▲':'▼'} ${t}</span>`).join("")}</div>
+    </div>`).join("");
+
+  /* traps: high mode tier but net-bad here */
+  const traps=results.filter(r=>{
+    const d=DATA.find(x=>x[0]===r.name);
+    return d[MODEKEY[state.mode]]>=2 && r.why.some(([s])=>s==="-") && results.indexOf(r)>=15;
+  }).slice(0,3);
+  $("traps").innerHTML=traps.length?traps.map(r=>`
+    <div class="result avoid">
+      <div class="rhead">
+        <span class="rank">✕</span>
+        <span class="rname">${r.name}</span>
+        <span class="rcls cls ${r.cls}">${r.cls}</span>
+        <span class="bar"><i style="width:30%"></i></span>
+        <span class="score">${r.score}</span>
+      </div>
+      <div class="why">${r.why.filter(([s])=>s==="-").slice(0,3).map(([s,t])=>`<span class="minus">▼ ${t}</span>`).join("")}</div>
+    </div>`).join(""):`<div class="statusbar">No obvious traps for this state.</div>`;
+}
+
+buildModeSeg();buildMapSel();buildOrderSeg();buildTabs();render();
+</script>
+</body>
+</html>
